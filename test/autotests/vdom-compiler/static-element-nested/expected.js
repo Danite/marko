@@ -9,7 +9,7 @@ var marko_template = module.exports = require("marko/src/vdom").t(),
         "class": "hello",
         onclick: "onClick()"
       }, 1, 0, {
-        c: marko_const_nextId()
+        i: marko_const_nextId()
       })
       .t("Welcome!");
 

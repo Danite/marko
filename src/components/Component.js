@@ -4,10 +4,10 @@
 var domInsert = require('../runtime/dom-insert');
 var defaultCreateOut = require('../runtime/createOut');
 var getComponentsContext = require('./ComponentsContext').___getComponentsContext;
+var commentNodeLookup = require('../runtime/vdom/vdom').___VComment.___commentNodeLookup;
 var componentsUtil = require('./util');
 var componentLookup = componentsUtil.___componentLookup;
 var emitLifecycleEvent = componentsUtil.___emitLifecycleEvent;
-var destroyComponentForEl = componentsUtil.___destroyComponentForEl;
 var destroyElRecursive = componentsUtil.___destroyElRecursive;
 var getElementById = componentsUtil.___getElementById;
 var EventEmitter = require('events-light');
@@ -16,11 +16,8 @@ var SubscriptionTracker = require('listener-tracker');
 var inherit = require('raptor-util/inherit');
 var updateManager = require('./update-manager');
 var morphdom = require('../morphdom');
-var eventDelegation = require('./event-delegation');
 
 var slice = Array.prototype.slice;
-
-var MORPHDOM_SKIP = true;
 
 var COMPONENT_SUBSCRIBE_TO_OPTIONS;
 var NON_COMPONENT_SUBSCRIBE_TO_OPTIONS = {
@@ -33,25 +30,6 @@ var emit = EventEmitter.prototype.emit;
 
 function removeListener(removeEventListenerHandle) {
     removeEventListenerHandle();
-}
-
-function checkCompatibleComponent(globalComponentsContext, el) {
-    var component = el._w;
-    while(component) {
-        var id = component.id;
-        var newComponentDef = globalComponentsContext.___componentsById[id];
-        if (newComponentDef && component.___type == newComponentDef.___component.___type) {
-            break;
-        }
-
-        var rootFor = component.___rootFor;
-        if (rootFor)  {
-            component = rootFor;
-        } else {
-            component.___destroyShallow();
-            break;
-        }
-    }
 }
 
 function handleCustomEventWithMethodListener(component, targetMethodName, args, extraArgs) {
@@ -158,46 +136,10 @@ function checkInputChanged(existingComponent, oldInput, newInput) {
     return false;
 }
 
-function onNodeDiscarded(node) {
-    if (node.nodeType === 1) {
-        destroyComponentForEl(node);
+function removeCommentNodeFromLookup(node) {
+    if (node.nodeType === 8) {
+        delete commentNodeLookup[node.nodeValue.substring(1)];
     }
-}
-
-function onBeforeNodeDiscarded(node) {
-    return eventDelegation.___handleNodeDetach(node);
-}
-
-function onBeforeElUpdated(fromEl, key, globalComponentsContext) {
-    if (key) {
-        var preserved = globalComponentsContext.___preserved[key];
-
-        if (preserved === true) {
-            // Don't morph elements that are associated with components that are being
-            // reused or elements that are being preserved. For components being reused,
-            // the morphing will take place when the reused component updates.
-            return MORPHDOM_SKIP;
-        } else {
-            // We may need to destroy a Component associated with the current element
-            // if a new UI component was rendered to the same element and the types
-            // do not match
-            checkCompatibleComponent(globalComponentsContext, fromEl);
-        }
-    }
-}
-
-function onBeforeElChildrenUpdated(el, key, globalComponentsContext) {
-    if (key) {
-        var preserved = globalComponentsContext.___preservedBodies[key];
-        if (preserved === true) {
-            // Don't morph the children since they are preserved
-            return MORPHDOM_SKIP;
-        }
-    }
-}
-
-function onNodeAdded(node, globalComponentsContext) {
-    eventDelegation.___handleNodeAttach(node, globalComponentsContext.___out);
 }
 
 var componentProto;
@@ -212,7 +154,8 @@ function Component(id) {
     this.id = id;
     this.el = null;
     this.___state = null;
-    this.___roots = null;
+    this.___startNode = null;
+    this.___endNode = null;
     this.___subscriptions = null;
     this.___domEventListenerHandles = null;
     this.___bubblingDomEvents = null; // Used to keep track of bubbling DOM events for components rendered on the server
@@ -304,24 +247,11 @@ Component.prototype = componentProto = {
             return;
         }
 
-        var els = this.els;
-
         this.___destroyShallow();
 
-        var rootComponents = this.___rootComponents;
-        if (rootComponents) {
-            rootComponents.forEach(function(rootComponent) {
-                rootComponent.___destroy();
-            });
-        }
-
-        els.forEach(function(el) {
-            destroyElRecursive(el);
-
-            var parentNode = el.parentNode;
-            if (parentNode) {
-                parentNode.removeChild(el);
-            }
+        this.___forEachNode(function(rootNode) {
+            destroyElRecursive(rootNode);
+            rootNode.parentNode.removeChild(rootNode);
         });
     },
 
@@ -345,6 +275,11 @@ Component.prototype = componentProto = {
         }
 
         delete componentLookup[this.id];
+
+        // We have to do some cleanup since we index comment nodes used
+        // as component boundaries
+        removeCommentNodeFromLookup(this.___startNode);
+        removeCommentNodeFromLookup(this.___endNode);
     },
 
     isDestroyed: function() {
@@ -509,7 +444,10 @@ Component.prototype = componentProto = {
         if (!renderer) {
             throw TypeError();
         }
-        var fromEls = self.___getRootEls({});
+
+        var startNode = this.___startNode;
+        var endNode = this.___endNode.nextSibling;
+
         var doc = self.___document;
         var input = this.___renderInput || this.___input;
         var globalData = this.___global;
@@ -544,36 +482,12 @@ Component.prototype = componentProto = {
             if (isRerenderInBrowser !== true) {
                 var targetNode = out.___getOutput();
 
-                var fromEl;
-
-                var targetEl = targetNode.___firstChild;
-                while (targetEl) {
-                    var nodeName = targetEl.___nodeName;
-
-                    if (nodeName === 'HTML') {
-                        fromEl = document.documentElement;
-                    } else if (nodeName === 'BODY') {
-                        fromEl = document.body;
-                    } else if (nodeName === 'HEAD') {
-                        fromEl = document.head;
-                    } else {
-                        fromEl = fromEls[targetEl.id];
-                    }
-
-                    if (fromEl) {
-                        morphdom(
-                            fromEl,
-                            targetEl,
-                            globalComponentsContext,
-                            onNodeAdded,
-                            onBeforeElUpdated,
-                            onBeforeNodeDiscarded,
-                            onNodeDiscarded,
-                            onBeforeElChildrenUpdated);
-                    }
-
-                    targetEl = targetEl.___nextSibling;
-                }
+                morphdom(
+                    startNode,
+                    endNode,
+                    targetNode,
+                    doc,
+                    globalComponentsContext);
             }
 
             result.afterInsert(doc);
@@ -584,25 +498,30 @@ Component.prototype = componentProto = {
         this.___reset();
     },
 
-    ___getRootEls: function(rootEls) {
-        var i, len;
+    ___detach: function() {
+        var fragment = this.___document.createDocumentFragment();
+        this.___forEachNode(fragment.appendChild.bind(fragment));
+        return fragment;
+    },
 
-        var componentEls = this.els;
+    get els() {
+        var els = [];
+        this.___forEachNode(els.push.bind(els));
+        return els;
+    },
 
-        for (i=0, len=componentEls.length; i<len; i++) {
-            var componentEl = componentEls[i];
-            rootEls[componentEl.id] = componentEl;
-        }
+    ___forEachNode: function(callback) {
+        var currentNode = this.___startNode;
+        var endNode = this.___endNode;
 
-        var rootComponents = this.___rootComponents;
-        if (rootComponents) {
-            for (i=0, len=rootComponents.length; i<len; i++) {
-                var rootComponent = rootComponents[i];
-                rootComponent.___getRootEls(rootEls);
+        for(;;) {
+            var nextSibling = currentNode.nextSibling;
+            callback(currentNode);
+            if (currentNode == endNode) {
+                break;
             }
+            currentNode = nextSibling;
         }
-
-        return rootEls;
     },
 
     ___removeDOMEventListeners: function() {
@@ -646,17 +565,7 @@ componentProto.___destroy = componentProto.destroy;
 domInsert(
     componentProto,
     function getEl(component) {
-        var els = this.els;
-        var elCount = els.length;
-        if (elCount > 1) {
-            var fragment = component.___document.createDocumentFragment();
-            els.forEach(function(el) {
-                fragment.appendChild(el);
-            });
-            return fragment;
-        } else {
-            return els[0];
-        }
+        return component.___detach();
     },
     function afterInsert(component) {
         return component;

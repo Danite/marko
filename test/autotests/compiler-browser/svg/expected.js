@@ -9,7 +9,7 @@ var marko_template = module.exports = require("marko/src/vdom").t(),
         viewBox: "0 0 200 200",
         xmlns: "http://www.w3.org/2000/svg"
       }, 1, 1, {
-        c: marko_const_nextId()
+        i: marko_const_nextId()
       })
       .e("circle", {
           cx: "100",

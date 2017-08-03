@@ -28,18 +28,13 @@ function resolveComponentKey(globalComponentsContext, key, scope) {
 }
 
 function preserveComponentEls(existingComponent, out, globalComponentsContext) {
-    var rootEls = existingComponent.___getRootEls({});
+    var componentId = existingComponent.id;
 
-    for (var elId in rootEls) {
-        var el = rootEls[elId];
-
-        // We put a placeholder element in the output stream to ensure that the existing
-        // DOM node is matched up correctly when using morphdom.
-        out.element(el.tagName, { id: elId });
-
-        globalComponentsContext.___preserveDOMNode(elId); // Mark the element as being preserved (for morphdom)
-    }
-
+    // We put a placeholder element in the output stream to ensure that the existing
+    // DOM node is matched up correctly when using morphdom. We flag the VElement
+    // node to track that it is a preserve marker
+    out.element('', { id: componentId }, 0, 24 /* FLAG_PRESERVE | FLAG_COMPONENT_START_NODE */);
+    globalComponentsContext.___preserveComponent(existingComponent.id);
     existingComponent.___reset(); // The component is no longer dirty so reset internal flags
     return true;
 }

@@ -11,24 +11,21 @@ var marko_template = module.exports = require("marko/src/html").t(__filename),
     marko_defineComponent = components_helpers.c,
     marko_helpers = require("marko/src/runtime/html/helpers"),
     marko_loadTag = marko_helpers.t,
-    include_tag = marko_loadTag(require("marko/src/components/taglib/include-tag")),
+    include_tag = marko_loadTag(require("marko/src/taglibs/core/include-tag")),
     marko_attr = marko_helpers.a;
 
 function render(input, out, __component, component, state) {
   var data = input;
 
-  var __componentId0 = __component.id;
-
   out.w("<div" +
-    marko_attr("id", __componentId0) +
-    ">");
+    marko_attr("id", __component.id) +
+    ">\n    ");
 
   include_tag({
-      _target: data.renderBody,
-      _elId: __componentId0
+      _target: data.renderBody
     }, out);
 
-  out.w("</div>");
+  out.w("\n</div>");
 }
 
 marko_template._ = marko_renderer(render, {
@@ -45,6 +42,6 @@ marko_template.meta = {
         }
     ],
     tags: [
-      "marko/src/components/taglib/include-tag"
+      "marko/src/taglibs/core/include-tag"
     ]
   };

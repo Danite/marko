@@ -40,3 +40,5 @@ function attachBubblingEvent(componentDef, handlerMethodName, extraArgs) {
 exports.___nextComponentIdProvider = nextComponentIdProvider;
 exports.___isServer = true;
 exports.___attachBubblingEvent = attachBubblingEvent;
+exports.___destroyComponentForNode = function noop() {};
+exports.___destroyElRecursive = function noop() {};

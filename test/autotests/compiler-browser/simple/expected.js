@@ -7,11 +7,11 @@ var marko_template = module.exports = require("marko/src/vdom").t(),
     marko_const = marko_helpers.const,
     marko_const_nextId = marko_const("295cea"),
     marko_node0 = marko_createElement("DIV", null, 1, 0, {
-        c: marko_const_nextId()
+        i: marko_const_nextId()
       })
       .t("No colors!"),
     marko_node1 = marko_createElement("DIV", null, 1, 0, {
-        c: marko_const_nextId()
+        i: marko_const_nextId()
       })
       .t("No colors!");
 

@@ -3,9 +3,12 @@
 const Node = require('../../Node');
 const vdomUtil = require('../../../util/vdom');
 
-var FLAG_IS_SVG = 1;
-var FLAG_IS_TEXTAREA = 2;
-var FLAG_SIMPLE_ATTRS = 4;
+const FLAG_IS_SVG = 1;
+const FLAG_IS_TEXTAREA = 2;
+const FLAG_SIMPLE_ATTRS = 4;
+// const FLAG_PRESERVE = 8;
+// const FLAG_COMPONENT_START_NODE = 16;
+// const FLAG_COMPONENT_END_NODE = 32;
 
 function finalizeCreateArgs(createArgs, builder) {
     var length = createArgs.length;
@@ -46,6 +49,21 @@ const SIMPLE_ATTRS = {
     'id': true
 };
 
+function isStaticProperties(properties) {
+    for (var k in properties) {
+        var v = properties[k];
+        if (v.type !== 'Literal') {
+            return false;
+        }
+
+        if (typeof v.value === 'object') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 class HtmlElementVDOM extends Node {
     constructor(def) {
         super('HtmlElementVDOM');
@@ -57,6 +75,7 @@ class HtmlElementVDOM extends Node {
         this.properties = def.properties;
         this.body = def.body;
         this.dynamicAttributes = def.dynamicAttributes;
+        this.runtimeFlags = def.runtimeFlags;
 
         this.isSVG = false;
         this.isTextArea = false;
@@ -69,7 +88,6 @@ class HtmlElementVDOM extends Node {
         this.createElementId = undefined;
         this.attributesArg = undefined;
         this.propertiesArg = undefined;
-        this.nextConstId = undefined;
     }
 
     generateCode(codegen) {
@@ -186,6 +204,8 @@ class HtmlElementVDOM extends Node {
 
         this.attributesArg = attributesArg;
 
+        this.properties = builder.literal(this.properties || {});
+
         return this;
     }
 
@@ -200,7 +220,7 @@ class HtmlElementVDOM extends Node {
 
         let body = this.body;
         let attributesArg = this.attributesArg;
-        let nextConstId = this.nextConstId;
+
         let tagName = this.tagName;
 
         let childCount = body && body.length;
@@ -233,19 +253,21 @@ class HtmlElementVDOM extends Node {
             flags |= FLAG_SIMPLE_ATTRS;
         }
 
+        if (this.runtimeFlags) {
+            flags |= this.runtimeFlags;
+        }
+
         if (flags) {
             createArgs[3] = builder.literal(flags);
         }
 
-        if (nextConstId) {
-            if (!this.properties) {
-                this.properties = {};
-            }
-            this.properties.c = nextConstId;
-        }
+        let properties = this.properties;
 
-        if (this.properties) {
-            createArgs[4] = builder.literal(this.properties);
+        if (this.properties && properties.type === 'Literal' && Object.keys(properties.value).length === 0) {
+            properties = null;
+        }
+        if (properties) {
+            createArgs[4] = properties;
         }
 
         // Remove trailing undefined arguments and convert non-trailing
@@ -288,6 +310,21 @@ class HtmlElementVDOM extends Node {
                 writer.write(child);
             }
             writer.decIndent();
+        }
+    }
+
+    setConstId(value) {
+        this.properties.value.i = value;
+    }
+
+    finalizeProperties(context) {
+        if (this.properties.type === 'Literal' && isStaticProperties(this.properties.value)) {
+            if (Object.keys(this.properties.value).length === 0) {
+                this.properties = null;
+            } else {
+                this.properties = context.addStaticVar('props', this.properties);
+            }
+
         }
     }
 }

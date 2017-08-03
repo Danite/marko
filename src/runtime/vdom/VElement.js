@@ -8,6 +8,9 @@ var toString = String;
 var FLAG_IS_SVG = 1;
 var FLAG_IS_TEXTAREA = 2;
 var FLAG_SIMPLE_ATTRS = 4;
+// var FLAG_PRESERVE = 8;
+// var FLAG_COMPONENT_START_NODE = 16;
+// var FLAG_COMPONENT_END_NODE = 32;
 
 var defineProperty = Object.defineProperty;
 
@@ -60,7 +63,7 @@ function VElement(tagName, attrs, childCount, flags, props) {
     var constId, namespaceURI;
 
     if (props) {
-        constId = props.c;
+        constId = props.i;
     }
 
     if ((this.___flags = flags || 0)) {
@@ -179,7 +182,7 @@ VElement.prototype = {
         // different namespaces
         var value = this.___attributes[name];
         return value != null && value !== false;
-    },
+    }
 };
 
 inherit(VElement, VNode);
@@ -234,7 +237,6 @@ VElement.___removePreservedAttributes = function(attrs) {
 };
 
 VElement.___morphAttrs = function(fromEl, toEl) {
-
     var removePreservedAttributes = VElement.___removePreservedAttributes;
 
     var attrs = toEl.___attributes;
@@ -308,6 +310,8 @@ VElement.___morphAttrs = function(fromEl, toEl) {
         }
         return;
     }
+
+    fromEl._vflags = flags;
 
     // In some cases we only want to set an attribute value for the first
     // render or we don't want certain attributes to be touched. To support

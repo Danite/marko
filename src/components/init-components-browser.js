@@ -7,8 +7,10 @@ var componentsUtil = require('./util');
 var componentLookup = componentsUtil.___componentLookup;
 var getElementById = componentsUtil.___getElementById;
 var ComponentDef = require('./ComponentDef');
+var commentNodeLookup = require('../runtime/vdom/vdom').___VComment.___commentNodeLookup;
 var registry = require('./registry');
 var serverRenderedGlobals = {};
+var isArray = Array.isArray;
 
 function invokeComponentEventHandler(component, targetMethodName, args) {
     var method = component[targetMethodName];
@@ -38,6 +40,49 @@ function addDOMEventListeners(component, el, eventType, targetMethodName, extraA
     handles.push(removeListener);
 }
 
+function indexCommentNodes(root) {
+    var treeWalker = document.createTreeWalker(
+        root,
+        128);
+
+    var node;
+    while((node = treeWalker.nextNode())) {
+        var commentValue = node.nodeValue;
+        if (commentValue[0] === '^' || commentValue[0] === '$') {
+            commentNodeLookup[commentValue] = node;
+        }
+    }
+}
+
+function resolveBoundaryNode(componentId, target, doc, prefix) {
+    if (target) {
+        var type = target[0];
+        var targetId = target.substring(1);
+
+        switch(type) {
+            case '@': {
+                targetId = targetId ? componentId + '-' + targetId : componentId;
+                break;
+            }
+            case 'd': {
+                return doc.documentElement;
+            }
+
+        }
+
+        return doc.getElementById(targetId);
+    } else {
+        var commentNode = commentNodeLookup[prefix + componentId];
+        if (!commentNode && !doc.___commendNodesIndexed) {
+            doc.___commendNodesIndexed = 1;
+            indexCommentNodes(doc);
+            commentNode = commentNodeLookup[prefix + componentId];
+            // We might need to index
+        }
+        return commentNode;
+    }
+}
+
 function initComponent(componentDef, doc) {
     var component = componentDef.___component;
 
@@ -51,42 +96,36 @@ function initComponent(componentDef, doc) {
     var isExisting = componentDef.___isExisting;
     var id = component.id;
 
-    var rootIds = componentDef.___roots;
+    var boundary = componentDef.___boundary;
+    var startNode;
+    var endNode;
 
-    if (rootIds) {
-        var rootComponents;
+    if (boundary) {
+        if (isArray(boundary)) {
+            startNode = resolveBoundaryNode(id, boundary[0], doc, '^');
+            endNode = resolveBoundaryNode(id, boundary[1], doc, '$');
 
-        var els = [];
-
-        rootIds.forEach(function(rootId) {
-            var nestedId = id + '-' + rootId;
-            var rootComponent = componentLookup[nestedId];
-            if (rootComponent) {
-                rootComponent.___rootFor = component;
-                if (rootComponents) {
-                    rootComponents.push(rootComponent);
-                } else {
-                    rootComponents = component.___rootComponents = [rootComponent];
-                }
-            } else {
-                var rootEl = getElementById(doc, nestedId);
-                if (rootEl) {
-                    rootEl._w = component;
-                    els.push(rootEl);
-                }
+            if (!endNode) {
+                // Due to a bug in Chrome, the last comment node does not show
+                // up in the DOM as a child of the #document element so we
+                // have to add it ¯\_(ツ)_/¯
+                endNode = document.createComment('$' + id);
+                document.appendChild(endNode);
             }
-        });
-
-        component.el = els[0];
-        component.els = els;
-        componentLookup[id] = component;
-    } else if (!isExisting) {
-        var el = getElementById(doc, id);
-        el._w = component;
-        component.el = el;
-        component.els = [el];
-        componentLookup[id] = component;
+        } else {
+            startNode = endNode = resolveBoundaryNode(id, boundary, doc);
+        }
+    } else {
+        // If no boundary is provided then that means that there is a single
+        // HTML element that will server as the node for the UI component
+        startNode = endNode = getElementById(doc, id);
     }
+
+    component.el = startNode;
+    startNode._c = componentLookup[id] = component;
+
+    component.___startNode = startNode;
+    component.___endNode = endNode;
 
     if (componentDef.___willRerenderInBrowser) {
         component.___rerender(true);

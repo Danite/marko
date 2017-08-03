@@ -11,7 +11,8 @@ var marko_template = module.exports = require("marko/src/html").t(__filename),
     marko_rendererLegacy = legacy_helpers.r,
     marko_helpers = require("marko/src/runtime/html/helpers"),
     marko_loadTag = marko_helpers.t,
-    include_tag = marko_loadTag(require("marko/src/components/taglib/include-tag")),
+    include_tag = marko_loadTag(require("marko/src/taglibs/core/include-tag")),
+    w_preserve_tag = marko_loadTag(require("marko/src/components/taglib/preserve-tag")),
     marko_attr = marko_helpers.a;
 
 function render(input, out, __component, widget) {
@@ -19,13 +20,23 @@ function render(input, out, __component, widget) {
 
   out.w("<div" +
     marko_attr("id", __component.id) +
-    "><h1>Header</h1><div" +
-    marko_attr("id", __component.elId(0)) +
+    "><h1>Header</h1>");
+
+  var __componentId1 = __component.elId("0[]");
+
+  out.w("<div" +
+    marko_attr("id", __componentId1) +
     ">");
 
-  include_tag({
-      _target: __component.b,
-      _elId: __component.elId(0)
+  w_preserve_tag({
+      bodyOnly: true,
+      if: !__component.b,
+      id: __componentId1,
+      renderBody: function renderBody(out) {
+        include_tag({
+            _target: __component.b
+          }, out);
+      }
     }, out);
 
   out.w("</div></div>");
@@ -33,8 +44,7 @@ function render(input, out, __component, widget) {
 
 marko_template._ = marko_rendererLegacy(render, {
     split: true,
-    type: marko_componentType,
-    body: 0
+    type: marko_componentType
   });
 
 marko_template.meta = {
@@ -49,6 +59,7 @@ marko_template.meta = {
         }
     ],
     tags: [
-      "marko/src/components/taglib/include-tag"
+      "marko/src/taglibs/core/include-tag",
+      "marko/src/components/taglib/preserve-tag"
     ]
   };

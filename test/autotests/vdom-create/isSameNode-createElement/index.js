@@ -4,7 +4,7 @@ function isSameNode(virtualEl, realEl) {
     var constId = virtualEl.___constId;
     if (constId !== undefined) {
         var otherProps = realEl._vprops;
-        if (otherProps !== undefined && constId === otherProps.c) {
+        if (otherProps !== undefined && constId === otherProps.i) {
             return true;
         }
     }
@@ -13,7 +13,7 @@ function isSameNode(virtualEl, realEl) {
 }
 
 module.exports = function(helpers) {
-    var div = helpers.vdom.createElement('div', null, 0 /* childCount */, null, {c: 'abc123'} /* key */);
+    var div = helpers.vdom.createElement('div', null, 0 /* childCount */, null, {i: 'abc123'} /* key */);
     var span = helpers.vdom.createElement('span', null, 0 /* childCount */);
 
     var divClone = div.___cloneNode();

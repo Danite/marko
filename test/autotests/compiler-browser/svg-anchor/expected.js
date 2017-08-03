@@ -9,7 +9,7 @@ var marko_template = module.exports = require("marko/src/vdom").t(),
         width: "140",
         height: "30"
       }, 1, 1, {
-        c: marko_const_nextId()
+        i: marko_const_nextId()
       })
       .e("a", {
           "xlink:href": "https://developer.mozilla.org/en-US/docs/SVG",
