@@ -24,10 +24,7 @@ function render(input, out, __component, component, state) {
 
   out.w("<h1 id=\"myStart\"></h1>");
 
-  marko_renderComponent(my_component_tag, {}, out, [
-    __component,
-    "myEnd"
-  ]);
+  marko_renderComponent(my_component_tag, {}, out, "myEnd");
 
   out.w("<!--$" +
     __component.id +

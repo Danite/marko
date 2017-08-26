@@ -29,10 +29,7 @@ function render(input, out, __component, component, state) {
       c: __component.id
     });
 
-  marko_renderComponent(my_component_tag, {}, out, [
-    __component,
-    "myEnd"
-  ]);
+  marko_renderComponent(my_component_tag, {}, out, "myEnd");
 
   out.comment("$" + __component.id);
 

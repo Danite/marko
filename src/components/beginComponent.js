@@ -16,29 +16,27 @@ function isInputSerializable(component) {
     }
 }
 
-module.exports = function beginComponent(component, isSplitComponent) {
-    var componentStack = this.___componentStack;
-    var origLength = componentStack.length;
-    var parentComponentDef = componentStack[origLength - 1];
+module.exports = function beginComponent(component, isSplitComponent, parentComponentDef) {
+    var globalContext = this.___globalContext;
 
     var componentId = component.id;
 
-    var componentDef = new ComponentDef(component, componentId, this.___globalContext, componentStack, origLength);
+    var componentDef = this.___componentDef = new ComponentDef(component, componentId, globalContext);
 
     // On the server
-    if (parentComponentDef.___willRerenderInBrowser === true) {
+    if (parentComponentDef && parentComponentDef.___willRerenderInBrowser === true) {
         componentDef.___willRerenderInBrowser = true;
-    } else {
-        parentComponentDef.___addChild(componentDef);
-        if (isSplitComponent === false &&
-            this.___out.global.noBrowserRerender !== true &&
-            isInputSerializable(component)) {
-
-            componentDef.___willRerenderInBrowser = true;
-        }
+        return componentDef;
     }
 
-    componentStack.push(componentDef);
+    this.___components.push(componentDef);
+
+    if (isSplitComponent === false &&
+        this.___out.global.noBrowserRerender !== true &&
+        isInputSerializable(component)) {
+
+        componentDef.___willRerenderInBrowser = true;
+    }
 
     return componentDef;
 };

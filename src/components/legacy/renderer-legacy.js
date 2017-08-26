@@ -50,32 +50,39 @@ function createRendererFunc(templateRenderFunc, componentProps) {
         var isExisting;
         var customEvents;
         var scope;
+        var parentComponentDef;
 
         if (component) {
             id = component.id;
             isExisting = true;
             globalComponentsContext.___rerenderComponent = null;
         } else {
+            parentComponentDef = componentsContext.___componentDef;
             var componentArgs = out.___componentArgs;
 
             if (componentArgs) {
+                scope = parentComponentDef.id;
                 out.___componentArgs = null;
-                scope = componentArgs[0];
 
-                if (scope) {
-                    scope = scope.id;
+                var key;
+
+                if (typeof componentArgs === 'string') {
+                  key = componentArgs;
+                } else {
+                  key = componentArgs[0];
+                  customEvents = componentArgs[1];
                 }
 
-                var ref = componentArgs[1];
-                if (ref != null) {
-                    ref = ref.toString();
+                if (key != null) {
+                    key = key.toString();
                 }
-                id = id || resolveComponentKey(globalComponentsContext, ref, scope);
-                customEvents = componentArgs[2];
+                id = id || resolveComponentKey(globalComponentsContext, key, scope);
+            } else if (parentComponentDef) {
+                id = parentComponentDef.___nextComponentId();
+            } else {
+                id = globalComponentsContext.___nextComponentId();
             }
         }
-
-        id = id || componentsContext.___nextComponentId();
 
         if (registry.___isServer && typeName) {
             component = { id:id, typeName:typeName };
@@ -199,7 +206,7 @@ function createRendererFunc(templateRenderFunc, componentProps) {
             }
         }
 
-        componentDef.___end();
+        componentsContext.___componentDef = parentComponentDef;
     };
 }
 

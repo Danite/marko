@@ -12,7 +12,7 @@ module.exports = function assignComponentId(isRepeated) {
     var context = this.context;
     var builder = this.builder;
 
-    let componentRef;
+    let assignedKey;
     var nestedIdExpression;
     var idExpression;
 
@@ -45,35 +45,35 @@ module.exports = function assignComponentId(isRepeated) {
     var isCustomTag = el.type !== 'HtmlElement';
 
     if (el.hasAttribute('key')) {
-        componentRef = el.getAttributeValue('key');
+        assignedKey = el.getAttributeValue('key');
         el.removeAttribute('key');
     } else if (el.hasAttribute('ref')) {
         context.deprecate('The "ref" attribute is deprecated. Please use "key" instead.');
-        componentRef = el.getAttributeValue('ref');
+        assignedKey = el.getAttributeValue('ref');
         el.removeAttribute('ref');
     }
 
     if (el.hasAttribute('w-id')) {
         context.deprecate('The "w-id" attribute is deprecated. Please use "key" instead.');
 
-        if (componentRef) {
+        if (assignedKey) {
             this.addError('The "w-id" attribute cannot be used in conjuction with the "ref" or "key" attributes.');
             return;
         }
 
-        componentRef = el.getAttributeValue('w-id');
+        assignedKey = el.getAttributeValue('w-id');
 
         el.removeAttribute('w-id');
     }
 
-    if (componentRef) {
-        idExpression = this.buildComponentElIdFunctionCall(componentRef);
+    if (assignedKey) {
+        idExpression = this.buildComponentElIdFunctionCall(assignedKey);
 
-        nestedIdExpression = componentRef;
+        nestedIdExpression = assignedKey;
 
         if (isCustomTag) {
             // The element is a custom tag
-            this.getComponentArgs().setId(nestedIdExpression);
+            this.getComponentArgs().setKey(nestedIdExpression);
         } else {
             if (el.hasAttribute('id')) {
                 this.addError('The "ref", "key", and "w-id" attributes cannot be used in conjuction with the "id" attribute.');
@@ -105,7 +105,7 @@ module.exports = function assignComponentId(isRepeated) {
         idExpression = this.buildComponentElIdFunctionCall(nestedIdExpression);
 
         if (isCustomTag) {
-            this.getComponentArgs().setId(nestedIdExpression);
+            this.getComponentArgs().setKey(nestedIdExpression);
         } else {
             el.setAttributeValue('id', idExpression);
         }
@@ -140,7 +140,7 @@ module.exports = function assignComponentId(isRepeated) {
                 idVar);
 
             if (isCustomTag) {
-                transformHelper.getComponentArgs().setId(nestedIdExpression);
+                transformHelper.getComponentArgs().setKey(nestedIdExpression);
             } else {
                 el.setAttributeValue('id', idExpression);
             }

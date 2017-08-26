@@ -1,14 +1,11 @@
 'use strict';
-
-var ComponentDef = require('./ComponentDef');
 var componentsUtil = require('./util');
-var componentLookup = componentsUtil.___componentLookup;
+
 var beginComponent = require('./beginComponent');
 
 var EMPTY_OBJECT = {};
 
 function GlobalComponentsContext(out) {
-    this.___roots = [];
     this.___preserved = EMPTY_OBJECT;
     this.___preservedBodies = EMPTY_OBJECT;
     this.___preservedComponents = EMPTY_OBJECT;
@@ -20,34 +17,6 @@ function GlobalComponentsContext(out) {
 }
 
 GlobalComponentsContext.prototype = {
-    get ___existingComponentLookup() {
-        return componentLookup;
-    },
-    ___initComponents: function(doc) {
-        var topLevelComponentDefs = null;
-
-        this.___roots.forEach(function(root) {
-            var children = root.___children;
-            if (children) {
-                // NOTE: ComponentsContext.___initClientRendered is provided by
-                //       index-browser.js to avoid a circular dependency
-                ComponentsContext.___initClientRendered(children, doc);
-                if (topLevelComponentDefs === null) {
-                    topLevelComponentDefs = children;
-                } else {
-                    topLevelComponentDefs = topLevelComponentDefs.concat(children);
-                }
-            }
-        });
-
-        this.___roots = null;
-
-        // Reset things stored in global since global is retained for
-        // future renders
-        this.___out.global.___components = undefined;
-
-        return topLevelComponentDefs;
-    },
     ___preserveDOMNode: function(elId, bodyOnly) {
         var preserved = bodyOnly === true ? this.___preservedBodies : this.___preserved;
         if (preserved === EMPTY_OBJECT) {
@@ -60,16 +29,16 @@ GlobalComponentsContext.prototype = {
         preserved[elId] = true;
     },
     ___preserveComponent: function(componentId) {
-        var preserved = this.___preservedComponents;
-        if (preserved === EMPTY_OBJECT) {
-            preserved = this.___preservedComponents = {};
-        }
-        preserved[componentId] = true;
-    },
-    ___nextRepeatedId: function(parentId, id) {
+       var preserved = this.___preservedComponents;
+       if (preserved === EMPTY_OBJECT) {
+           preserved = this.___preservedComponents = {};
+       }
+       preserved[componentId] = true;
+   },
+    ___nextRepeatedId: function(parentId, key) {
         var nextIdLookup = this.___nextIdLookup || (this.___nextIdLookup = {});
 
-        var indexLookupKey = parentId + '-' + id;
+        var indexLookupKey = parentId + '-' + key;
         var currentIndex = nextIdLookup[indexLookupKey];
         if (currentIndex == null) {
             currentIndex = nextIdLookup[indexLookupKey] = 0;
@@ -81,48 +50,47 @@ GlobalComponentsContext.prototype = {
     }
 };
 
-function ComponentsContext(out, parentComponentsContext, shouldAddGlobalRoot) {
-    var root;
-
+function ComponentsContext(out, parentComponentsContext) {
     var globalComponentsContext;
+    var componentDef;
+    var components;
 
-    if (parentComponentsContext === undefined) {
+    if (parentComponentsContext) {
+        components = parentComponentsContext.___components;
+        globalComponentsContext = parentComponentsContext.___globalContext;
+        componentDef = parentComponentsContext.___componentDef;
+    } else {
         globalComponentsContext = out.global.___components;
         if (globalComponentsContext === undefined) {
             out.global.___components = globalComponentsContext = new GlobalComponentsContext(out);
         }
-
-        root = new ComponentDef(null, null, globalComponentsContext);
-
-        if (shouldAddGlobalRoot !== false) {
-            globalComponentsContext.___roots.push(root);
-        }
-    } else {
-        globalComponentsContext = parentComponentsContext.___globalContext;
-        var parentComponentStack = parentComponentsContext.___componentStack;
-        root = parentComponentStack[parentComponentStack.length-1];
+        components = [];
     }
 
     this.___globalContext = globalComponentsContext;
+    this.___components = components;
     this.___out = out;
-    this.___componentStack = [root];
+    this.___componentDef = componentDef;
 }
 
 ComponentsContext.prototype = {
-    ___createNestedComponentsContext: function(nestedOut) {
-        return new ComponentsContext(nestedOut, this);
-    },
     ___beginComponent: beginComponent,
 
-    ___nextComponentId: function() {
-        var componentStack = this.___componentStack;
-        var parentComponentDef = componentStack[componentStack.length - 1];
-        return parentComponentDef.___nextComponentId();
-    }
+    ___initComponents: function(doc) {
+        var componentDefs = this.___components;
+
+        ComponentsContext.___initClientRendered(componentDefs, doc);
+
+        // Reset things stored in global since global is retained for
+        // future renders
+        this.___out.global.___components = undefined;
+
+        return componentDefs;
+    },
 };
 
 function getComponentsContext(out) {
-    return out.data.___components || (out.data.___components = new ComponentsContext(out));
+    return out.___components || (out.___components = new ComponentsContext(out));
 }
 
 module.exports = exports = ComponentsContext;

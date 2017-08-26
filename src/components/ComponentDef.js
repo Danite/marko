@@ -9,13 +9,10 @@ var extend = require('raptor-util/extend');
  * a single component and this information is used to instantiate the component
  * later (after the rendered HTML has been added to the DOM)
  */
-function ComponentDef(component, componentId, globalComponentsContext, componentStack, componentStackLen) {
+function ComponentDef(component, componentId, globalComponentsContext) {
     this.___globalComponentsContext = globalComponentsContext; // The AsyncWriter that this component is associated with
-    this.___componentStack = componentStack;
-    this.___componentStackLen = componentStackLen;
     this.___component = component;
     this.id = componentId;
-
 
     this.___boundary =  undefined;            // IDs of root elements if there are multiple root elements
     this.___children = null;          // An array of nested ComponentDef instances
@@ -29,23 +26,6 @@ function ComponentDef(component, componentId, globalComponentsContext, component
 }
 
 ComponentDef.prototype = {
-    ___end: function() {
-        this.___componentStack.length = this.___componentStackLen;
-    },
-
-    /**
-     * Register a nested component for this component. We maintain a tree of components
-     * so that we can instantiate nested components before their parents.
-     */
-    ___addChild: function (componentDef) {
-        var children = this.___children;
-
-        if (children) {
-            children.push(componentDef);
-        } else {
-            this.___children = [componentDef];
-        }
-    },
     /**
      * This helper method generates a unique and fully qualified DOM element ID
      * that is unique within the scope of the current component. This method prefixes
@@ -89,11 +69,7 @@ ComponentDef.prototype = {
      * Returns the next auto generated unique ID for a nested DOM element or nested DOM component
      */
     ___nextComponentId: function() {
-        var id = this.id;
-
-        return id === null ?
-            this.___globalComponentsContext.___nextComponentId(this.___out) :
-            id + '-c' + (this.___nextIdIndex++);
+        return this.id + '-c' + (this.___nextIdIndex++);
     },
 
     d: function(handlerMethodName, extraArgs) {

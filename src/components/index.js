@@ -3,8 +3,30 @@
 var warp10 = require('warp10');
 var escapeEndingScriptTagRegExp = /<\//g;
 
-function flattenHelper(components, flattened, typesArray, typesLookup) {
-    for (var i = 0, len = components.length; i < len; i++) {
+
+
+function getRenderedComponents(out, shouldIncludeAll) {
+    var componentsContext = out.___components;
+    if (componentsContext === null) {
+        return;
+    }
+
+    // console.log('componentsContext:', componentsContext);
+
+    var components = componentsContext.___components;
+    if (components.length === 0) {
+        return;
+    }
+
+    // console.log('components:', components.map((componentDef) => {
+    //     return { id: componentDef.id, type: componentDef.type};
+    // }));
+
+    var componentsFinal = [];
+    var typesLookup = {};
+    var typesArray = [];
+
+    for (var i = components.length - 1; i >= 0; i--) {
         var componentDef = components[i];
         var id = componentDef.id;
         var component = componentDef.___component;
@@ -34,14 +56,6 @@ function flattenHelper(components, flattened, typesArray, typesLookup) {
             typeIndex = typesArray.length;
             typesArray.push(typeName);
             typesLookup[typeName] = typeIndex;
-        }
-
-        var children = componentDef.___children;
-
-        if (children !== null) {
-            // Depth-first search (children should be initialized before parent)
-            flattenHelper(children, flattened, typesArray, typesLookup);
-            componentDef.___children = null;
         }
 
         var hasProps = false;
@@ -89,63 +103,15 @@ function flattenHelper(components, flattened, typesArray, typesLookup) {
             _: rerenderInBrowser ? 1 : undefined
         };
 
-        flattened.push([
+        componentsFinal.push([
             id,                  // 0 = id
             typeIndex,           // 1 = type
             input,               // 2 = input
             extra                // 3
         ]);
     }
-}
 
-function getRenderedComponents(out, shouldIncludeAll) {
-    var componentDefs;
-    var globalComponentsContext;
-    var outGlobal = out.global;
-
-    if (shouldIncludeAll === true) {
-        globalComponentsContext = outGlobal.___components;
-
-        if (globalComponentsContext === undefined) {
-            return undefined;
-        }
-    } else {
-        let componentsContext = out.data.___components;
-        if (componentsContext === undefined) {
-            return undefined;
-        }
-        let rootComponentDef = componentsContext.___componentStack[0];
-        componentDefs = rootComponentDef.___children;
-
-        if (componentDefs === null) {
-            return undefined;
-        }
-
-        rootComponentDef.___children = null;
-    }
-
-    var flattened = [];
-    var typesLookup = {};
-    var typesArray = [];
-
-    if (shouldIncludeAll === true) {
-        let roots = globalComponentsContext.___roots;
-        for (let i=0, len=roots.length; i<len; i++) {
-            let root = roots[i];
-            let children = root.___children;
-            if (children !== null) {
-                flattenHelper(children, flattened, typesArray, typesLookup);
-            }
-        }
-    } else {
-        flattenHelper(componentDefs, flattened, typesArray, typesLookup);
-    }
-
-    if (flattened.length === 0) {
-        return undefined;
-    }
-
-    return {w: flattened, t: typesArray};
+    return {w: componentsFinal, t: typesArray};
 }
 
 function writeInitComponentsCode(out, shouldIncludeAll) {

@@ -26,10 +26,7 @@ function render(input, out, __component, component, state) {
     marko_attr("id", __component.id) +
     ">");
 
-  marko_renderComponent(app_foo_tag, {}, out, [
-    __component,
-    "foo"
-  ]);
+  marko_renderComponent(app_foo_tag, {}, out, "foo");
 
   out.w("<a href=\"ebay.com\"" +
     marko_attr("id", __component.elId("link")) +

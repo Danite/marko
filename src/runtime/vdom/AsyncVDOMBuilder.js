@@ -40,6 +40,7 @@ function AsyncVDOMBuilder(globalData, parentNode, state) {
     this.___stack = [parentNode];
     this.___sync = false;
     this.___vnode = undefined;
+    this.___components = null;
     this.___componentArgs = null; // Component args
 }
 

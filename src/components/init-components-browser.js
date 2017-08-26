@@ -178,13 +178,8 @@ function initClientRendered(componentDefs, doc) {
     eventDelegation.___init(doc);
 
     doc = doc || defaultDocument;
-    for (var i=0,len=componentDefs.length; i<len; i++) {
+    for (var i=componentDefs.length-1; i>=0; i--) {
         var componentDef = componentDefs[i];
-
-        if (componentDef.___children) {
-            initClientRendered(componentDef.___children, doc);
-        }
-
         initComponent(
             componentDef,
             doc);
