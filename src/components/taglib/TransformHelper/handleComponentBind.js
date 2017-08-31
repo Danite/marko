@@ -148,22 +148,24 @@ module.exports = function handleComponentBind() {
     }
 
     if (componentModule) {
-        let componentTypeNode;
+        let componentIdNode;
         let dependencyModule = isLegacyComponent || isSplit ? componentModule : this.getTemplateModule();
 
         if (dependencyModule.requirePath) {
-            context.addDependency({ type:'require', path: dependencyModule.requirePath });
+            context.setMeta('component', dependencyModule.requirePath);
         }
 
         if (isSplit) {
             context.addDependency({ type:'require', path: context.markoModulePrefix + 'components' });
         }
 
-        componentTypeNode = context.addStaticVar(
-            'marko_componentType',
+        componentIdNode = context.addStaticVar(
+            'marko_componentId',
             generateRegisterComponentCode(componentModule, this, isSplit));
 
-        componentProps.type = componentTypeNode;
+        componentProps.type = componentIdNode;
+
+        context.setMeta('id', componentIdNode);
     }
 
     if (el.hasAttribute('w-config')) {
